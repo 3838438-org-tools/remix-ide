@@ -1,7 +1,6 @@
 'use strict'
 
-var EventEmitter = require('events')
-var EventManager = require('../../lib/events')
+const EventEmitter = require('events')
 var globalRegistry = require('../../global/registry')
 var CompilerImport = require('../compiler/compiler-imports')
 
@@ -13,8 +12,7 @@ var CompilerImport = require('../compiler/compiler-imports')
 class FileManager {
   constructor (localRegistry) {
     this.openedFiles = {} // list all opened files
-    this.event = new EventManager()
-    this.nodeEvent = new EventEmitter()
+    this.events = new EventEmitter()
     this._components = {}
     this._components.compilerImport = new CompilerImport()
     this._components.registry = localRegistry || globalRegistry
@@ -42,10 +40,6 @@ class FileManager {
     self._deps.gistExplorer.event.register('fileRemoved', (path) => { this.fileRemovedEvent(path) })
     self._deps.localhostExplorer.event.register('errored', (event) => { this.removeTabsOf(self._deps.localhostExplorer) })
     self._deps.localhostExplorer.event.register('closed', (event) => { this.removeTabsOf(self._deps.localhostExplorer) })
-
-    self.event.register('currentFileChanged', (file, provider) => {
-      this.nodeEvent.emit('currentFileChanged', file)
-    })
   }
 
   profile () {
@@ -84,7 +78,7 @@ class FileManager {
         this.switchFile(newFocus)
       }
     }
-    this.event.trigger('fileRenamed', [oldName, newName])
+    this.events.emit('fileRenamed', oldName, newName)
   }
 
   currentFileProvider () {
@@ -107,7 +101,7 @@ class FileManager {
       this._deps.editor.displayEmptyReadOnlySession()
       this._deps.config.set('currentFile', '')
     }
-    this.event.trigger('fileClosed', [name])
+    this.events.emit('fileClosed', name)
   }
 
   currentPath () {
@@ -167,7 +161,7 @@ class FileManager {
     }
     self._deps.editor.discard(path)
     delete this.openedFiles[path]
-    this.event.trigger('fileRemoved', [path])
+    this.events.emit('fileRemoved', path)
     this.switchFile()
   }
 
@@ -182,7 +176,7 @@ class FileManager {
         if (fileList.length) {
           _switchFile(browserProvider.type + '/' + fileList[0])
         } else {
-          self.event.trigger('currentFileChanged', [])
+          self.events.emit('currentFileChanged')
           self._deps.editor.displayEmptyReadOnlySession()
         }
       })
@@ -200,7 +194,7 @@ class FileManager {
           } else {
             self._deps.editor.open(file, content)
           }
-          self.event.trigger('currentFileChanged', [file, self.fileProviderOf(file)])
+          self.events.emit('currentFileChanged', file)
         }
       })
     }
